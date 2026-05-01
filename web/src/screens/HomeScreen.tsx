@@ -303,8 +303,13 @@ function WeekItem({ weekStart, dayMap, activities, todayStr, isExpanded, onToggl
     days.push({ date: ds, run: dayMap[ds] })
   }
   const total = days.reduce((s, d) => s + (d.run?.m || 0), 0)
-  const longRun = days.find(d => d.run?.t === 'long' || d.run?.t === 'me_weekend')?.run
-  const quality = days.find(d => d.run?.t === 'tempo' || d.run?.t === 'vo2' || d.run?.t === 'me_primary')?.run
+  const actualTotal = days.reduce(
+    (s, d) => s + (activities[d.date]?.reduce((m, a) => m + a.miles, 0) || 0), 0
+  )
+
+  // A week is "past" once its last day is before today
+  const lastDayStr = format(addDays(weekStart, 6), 'yyyy-MM-dd')
+  const isPast = lastDayStr < todayStr
 
   return (
     <div>
@@ -319,11 +324,16 @@ function WeekItem({ weekStart, dayMap, activities, todayStr, isExpanded, onToggl
           ><polyline points="9 18 15 12 9 6"/></svg>
           <div className="text-sm text-gray-700">Week of {format(weekStart, 'MMM d')}</div>
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          {quality && <span className={`pill ${TYPE_PILL[quality.t] || 'pill-rest'} !text-[10px] !px-2 !py-0.5`}>{TYPE_LABEL[quality.t]}</span>}
-          {longRun && <span className="text-gray-500">Long {longRun.m}</span>}
-          <span className="text-gray-700 font-semibold w-12 text-right">{total} mi</span>
-        </div>
+        {isPast ? (
+          <div className="text-xs text-right">
+            <span className="font-semibold text-gray-700">{actualTotal.toFixed(1)}</span>
+            <span className="text-gray-400"> / {total} mi</span>
+          </div>
+        ) : (
+          <div className="text-xs">
+            <span className="text-gray-700 font-semibold">{total} mi</span>
+          </div>
+        )}
       </button>
       {isExpanded && (
         <div className="mt-1 mb-2 ml-6 space-y-1.5 border-l-2 border-gray-100 pl-4">
