@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    /* Respect iOS safe areas */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  /* Prevent overscroll bounce on iOS */
+  html, body {
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-4;
+  }
+  .pill {
+    @apply inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold;
+  }
+  .pill-easy { @apply bg-emerald-100 text-emerald-800; }
+  .pill-long { @apply bg-blue-100 text-blue-800; }
+  .pill-tempo { @apply bg-orange-100 text-orange-900; }
+  .pill-vo2 { @apply bg-red-100 text-red-800; }
+  .pill-race { @apply bg-strava text-white; }
+  .pill-rest { @apply bg-gray-100 text-gray-500; }
+  .pill-missed { @apply bg-red-200 text-red-700; }
+}
