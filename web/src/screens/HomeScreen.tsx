@@ -139,7 +139,7 @@ export default function HomeScreen() {
         <div className="card">
           <div className="flex justify-between items-center mb-3">
             <div className="text-[10px] uppercase tracking-wider text-gray-400">This week</div>
-            <div className="text-xs text-gray-500">{weekActual.toFixed(1)} / {weekTotal} mi</div>
+            <div className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{weekActual.toFixed(1)}</span> done / <span className="text-gray-400">{weekTotal} planned</span></div>
           </div>
           <div className="space-y-2">
             {weekDays.map(({ date, run, actuals }) => {
@@ -165,7 +165,10 @@ export default function HomeScreen() {
                     {run ? (
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={`pill ${TYPE_PILL[run.t] || 'pill-rest'}`}>{TYPE_LABEL[run.t] || 'Run'}</span>
-                        <span className="text-sm text-gray-700 font-medium">{run.m}mi</span>
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-sm text-gray-700 font-medium">{run.m}mi</span>
+                          <span className="text-[10px] text-gray-400">planned</span>
+                        </div>
                       </div>
                     ) : (
                       <span className="text-sm text-gray-400">Rest</span>
@@ -173,11 +176,13 @@ export default function HomeScreen() {
                   </div>
                   <div className="text-right shrink-0">
                     {actMiles > 0 ? (
-                      <div>
-                        <div className={`text-sm font-semibold ${past || isCurrentDay ? 'text-emerald-600' : 'text-gray-700'}`}>
-                          {actMiles.toFixed(1)}mi
-                        </div>
-                        {run && <div className="text-[10px] text-gray-400">{Math.round(actMiles / run.m * 100)}%</div>}
+                      <div className="flex flex-col leading-tight items-end">
+                        <span className={`text-sm font-semibold ${past || isCurrentDay ? 'text-emerald-600' : 'text-gray-700'}`}>
+                          ✓ {actMiles.toFixed(1)}mi
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          {run ? `${Math.round(actMiles / run.m * 100)}% of plan` : 'unplanned'}
+                        </span>
                       </div>
                     ) : run && past ? (
                       <span className="text-xs text-red-500 font-semibold">missed</span>
@@ -345,7 +350,10 @@ function WeekItem({ weekStart, dayMap, activities, todayStr, isExpanded, onToggl
                   {run ? (
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`pill ${TYPE_PILL[run.t] || 'pill-rest'} !text-[10px]`}>{TYPE_LABEL[run.t] || 'Run'}</span>
-                      <span className="text-sm text-gray-700">{run.m}mi</span>
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-sm text-gray-700">{run.m}mi</span>
+                        <span className="text-[9px] text-gray-400">planned</span>
+                      </div>
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400">Rest</span>
@@ -353,7 +361,10 @@ function WeekItem({ weekStart, dayMap, activities, todayStr, isExpanded, onToggl
                 </div>
                 <div className="text-right shrink-0">
                   {actMiles > 0 ? (
-                    <span className={`text-xs font-semibold ${past ? 'text-emerald-600' : 'text-gray-700'}`}>{actMiles.toFixed(1)}mi</span>
+                    <div className="flex flex-col leading-tight items-end">
+                      <span className={`text-xs font-semibold ${past ? 'text-emerald-600' : 'text-gray-700'}`}>✓ {actMiles.toFixed(1)}mi</span>
+                      <span className="text-[9px] text-gray-400">{run ? 'done' : 'unplanned'}</span>
+                    </div>
                   ) : run && past ? (
                     <span className="text-[10px] text-red-500 font-semibold">missed</span>
                   ) : null}
