@@ -96,21 +96,28 @@ export default function SettingsScreen() {
         {/* Plan picker */}
         <Section title="Training plan">
           <div className="space-y-1">
-            {plans.map(p => (
-              <button key={p.key}
-                onClick={() => update('selected_plan', p.key)}
-                className={`w-full flex items-center justify-between p-3 rounded-xl text-left active:bg-gray-100 ${settings.selected_plan === p.key ? 'bg-strava/10 border border-strava/30' : 'border border-transparent'}`}>
-                <div>
-                  <div className="font-semibold text-gray-900">{p.name}</div>
-                  <div className="text-xs text-gray-500">{p.desc}</div>
-                </div>
-                {settings.selected_plan === p.key && (
-                  <div className="w-5 h-5 rounded-full bg-strava flex items-center justify-center">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+            {plans.length === 0 && (
+              <div className="text-sm text-gray-400 py-3 text-center">Loading plans...</div>
+            )}
+            {plans.map(p => {
+              const selected = settings.selected_plan === p.key
+              return (
+                <button key={p.key}
+                  type="button"
+                  onClick={() => update('selected_plan', p.key)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all active:scale-[0.98] ${selected ? 'bg-strava/10 border-2 border-strava' : 'border-2 border-transparent bg-gray-50 active:bg-gray-100'}`}>
+                  <div>
+                    <div className={`font-semibold ${selected ? 'text-strava' : 'text-gray-900'}`}>{p.name}</div>
+                    <div className="text-xs text-gray-500">{p.desc}</div>
                   </div>
-                )}
-              </button>
-            ))}
+                  {selected && (
+                    <div className="w-6 h-6 rounded-full bg-strava flex items-center justify-center shrink-0 ml-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </Section>
 

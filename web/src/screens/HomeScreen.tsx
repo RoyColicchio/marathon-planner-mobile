@@ -190,12 +190,9 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* Future weeks preview */}
+      {/* Future weeks browser */}
       <div className="px-4 pt-3">
-        <div className="card">
-          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-3">Next 4 weeks</div>
-          <UpcomingWeeks schedule={schedule} todayStr={todayStr} />
-        </div>
+        <FutureWeeks schedule={schedule} activities={activities} todayStr={todayStr} />
       </div>
     </div>
   )
@@ -216,42 +213,160 @@ function RunRow({ run, large = false }: { run: Run; large?: boolean }) {
   )
 }
 
-function UpcomingWeeks({ schedule, todayStr }: { schedule: Schedule; todayStr: string }) {
+function FutureWeeks({ schedule, activities, todayStr }: { schedule: Schedule; activities: Record<string, StravaActivity[]>; todayStr: string }) {
   const dayMap: Record<string, Run> = {}
   schedule.days.forEach(d => { dayMap[d.date] = d })
 
   const today = parseISO(todayStr)
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+  const planStart = parseISO(schedule.plan_start)
+  const raceDate = parseISO(schedule.race_date)
+  const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 })
 
-  const weeks: { start: Date; total: number; longRun?: Run; quality?: Run }[] = []
-  for (let w = 1; w <= 4; w++) {
-    const ws = addDays(weekStart, w * 7)
-    const days: Run[] = []
-    for (let i = 0; i < 7; i++) {
-      const ds = format(addDays(ws, i), 'yyyy-MM-dd')
-      if (dayMap[ds]) days.push(dayMap[ds])
-    }
-    const total = days.reduce((s, r) => s + r.m, 0)
-    const longRun = days.find(d => d.t === 'long' || d.t === 'me_weekend')
-    const quality = days.find(d => d.t === 'tempo' || d.t === 'vo2' || d.t === 'me_primary')
-    weeks.push({ start: ws, total, longRun, quality })
+  // Build the list of all weeks from plan_start through race week
+  const allWeeks: Date[] = []
+  let w = startOfWeek(planStart, { weekStartsOn: 1 })
+  const end = startOfWeek(raceDate, { weekStartsOn: 1 })
+  while (w <= end) {
+    allWeeks.push(w)
+    w = addDays(w, 7)
   }
 
+  // Find current-week index and start the browser at next week
+  const currentIdx = allWeeks.findIndex(d => d.getTime() === thisWeekStart.getTime())
+  const initialOffset = currentIdx >= 0 ? currentIdx + 1 : 0
+
+  const [offset, setOffset] = useState(initialOffset)
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  const PAGE = 4
+  const visibleWeeks = allWeeks.slice(offset, offset + PAGE)
+  const canGoBack = offset > 0
+  const canGoForward = offset + PAGE < allWeeks.length
+
   return (
-    <div className="space-y-2">
-      {weeks.map(w => (
-        <div key={w.start.toISOString()} className="flex items-center justify-between py-1.5 text-sm">
-          <div className="text-gray-600">Week of {format(w.start, 'MMM d')}</div>
-          <div className="flex items-center gap-3 text-xs">
-            {w.quality && <span className={`pill ${TYPE_PILL[w.quality.t]}`}>{TYPE_LABEL[w.quality.t]}</span>}
-            {w.longRun && <span className="text-gray-500">Long {w.longRun.m}mi</span>}
-            <span className="text-gray-700 font-semibold w-12 text-right">{w.total} mi</span>
-          </div>
+    <div className="card">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[10px] uppercase tracking-wider text-gray-400">Upcoming weeks</div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setOffset(Math.max(0, offset - PAGE))}
+            disabled={!canGoBack}
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${canGoBack ? 'text-gray-700 active:bg-gray-100' : 'text-gray-300'}`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button
+            onClick={() => setOffset(Math.min(allWeeks.length - PAGE, offset + PAGE))}
+            disabled={!canGoForward}
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${canGoForward ? 'text-gray-700 active:bg-gray-100' : 'text-gray-300'}`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
-      ))}
+      </div>
+      <div className="space-y-2">
+        {visibleWeeks.map(ws => (
+          <WeekItem
+            key={ws.toISOString()}
+            weekStart={ws}
+            dayMap={dayMap}
+            activities={activities}
+            todayStr={todayStr}
+            isExpanded={expanded === ws.toISOString()}
+            onToggle={() => setExpanded(expanded === ws.toISOString() ? null : ws.toISOString())}
+          />
+        ))}
+      </div>
+      {visibleWeeks.length === 0 && (
+        <div className="text-sm text-gray-400 text-center py-4">No more weeks</div>
+      )}
     </div>
   )
 }
+
+function WeekItem({ weekStart, dayMap, activities, todayStr, isExpanded, onToggle }: {
+  weekStart: Date
+  dayMap: Record<string, Run>
+  activities: Record<string, StravaActivity[]>
+  todayStr: string
+  isExpanded: boolean
+  onToggle: () => void
+}) {
+  const days: { date: string; run?: Run }[] = []
+  for (let i = 0; i < 7; i++) {
+    const ds = format(addDays(weekStart, i), 'yyyy-MM-dd')
+    days.push({ date: ds, run: dayMap[ds] })
+  }
+  const total = days.reduce((s, d) => s + (d.run?.m || 0), 0)
+  const longRun = days.find(d => d.run?.t === 'long' || d.run?.t === 'me_weekend')?.run
+  const quality = days.find(d => d.run?.t === 'tempo' || d.run?.t === 'vo2' || d.run?.t === 'me_primary')?.run
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between py-2 px-2 -mx-2 rounded-lg active:bg-gray-50"
+      >
+        <div className="flex items-center gap-2">
+          <svg
+            className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          ><polyline points="9 18 15 12 9 6"/></svg>
+          <div className="text-sm text-gray-700">Week of {format(weekStart, 'MMM d')}</div>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          {quality && <span className={`pill ${TYPE_PILL[quality.t] || 'pill-rest'} !text-[10px] !px-2 !py-0.5`}>{TYPE_LABEL[quality.t]}</span>}
+          {longRun && <span className="text-gray-500">Long {longRun.m}</span>}
+          <span className="text-gray-700 font-semibold w-12 text-right">{total} mi</span>
+        </div>
+      </button>
+      {isExpanded && (
+        <div className="mt-1 mb-2 ml-6 space-y-1.5 border-l-2 border-gray-100 pl-4">
+          {days.map(({ date, run }) => {
+            const d = parseISO(date)
+            const dow = format(d, 'EEE')
+            const dayNum = format(d, 'd')
+            const past = date < todayStr
+            const acts = activities[date]
+            const actMiles = acts?.reduce((s, a) => s + a.miles, 0) || 0
+
+            return (
+              <Link
+                key={date}
+                to={run ? `/workout/${date}` : '#'}
+                onClick={e => { if (!run) e.preventDefault() }}
+                className={`flex items-center justify-between py-1.5 px-2 -mx-2 rounded-lg ${run ? 'active:bg-gray-50' : ''}`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 text-center text-gray-400">
+                    <div className="text-[10px] uppercase">{dow}</div>
+                    <div className="text-sm leading-tight">{dayNum}</div>
+                  </div>
+                  {run ? (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`pill ${TYPE_PILL[run.t] || 'pill-rest'} !text-[10px]`}>{TYPE_LABEL[run.t] || 'Run'}</span>
+                      <span className="text-sm text-gray-700">{run.m}mi</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">Rest</span>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  {actMiles > 0 ? (
+                    <span className={`text-xs font-semibold ${past ? 'text-emerald-600' : 'text-gray-700'}`}>{actMiles.toFixed(1)}mi</span>
+                  ) : run && past ? (
+                    <span className="text-[10px] text-red-500 font-semibold">missed</span>
+                  ) : null}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 
 function Onboarding() {
   return (
